@@ -2,7 +2,7 @@
 
 A multi-agent Python system that autonomously searches job boards, scores listings with AI, filters by location, and delivers a daily digest email — built as a personal job search tool while actively job hunting.
 
-**[View Live Demo](https://sdellin.github.io/job-agent-demo)**
+**[View Live Demo]((https://sdellin12.github.io/job-agent-demo))**
 
 ---
 
