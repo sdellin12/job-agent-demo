@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Agent — Portfolio Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00ff41;
+    --green-dim: #00cc33;
+    --green-faint: rgba(0,255,65,0.07);
+    --amber: #ffb000;
+    --red: #ff3333;
+    --blue: #4488ff;
+    --bg: #020a04;
+    --bg2: #040f06;
+    --border: rgba(0,255,65,0.2);
+    --text: #00ff41;
+    --text-dim: rgba(0,255,65,0.55);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scanlines */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* flicker */
+  @keyframes flicker {
+    0%,100%{opacity:1} 92%{opacity:1} 93%{opacity:.96} 94%{opacity:1} 96%{opacity:.98} 97%{opacity:1}
+  }
+  body { animation: flicker 8s infinite; }
+
+  @keyframes glow-pulse {
+    0%,100%{ text-shadow: 0 0 8px var(--green), 0 0 20px rgba(0,255,65,0.4); }
+    50%{ text-shadow: 0 0 12px var(--green), 0 0 30px rgba(0,255,65,0.6); }
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes slide-in { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+  @keyframes scan-line {
+    0%{top:-5%} 100%{top:105%}
+  }
+
+  /* scan sweep */
+  .scan-sweep {
+    position: fixed;
+    left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(transparent, rgba(0,255,65,0.12), transparent);
+    animation: scan-line 6s linear infinite;
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0,255,65,0.03);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  .logo span { color: var(--text-dim); font-size: 11px; font-weight: 400; }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .clock { color: var(--text-dim); font-size: 12px; letter-spacing: 1px; }
+
+  .demo-badge {
+    background: rgba(255,176,0,0.12);
+    border: 1px solid rgba(255,176,0,0.4);
+    color: var(--amber);
+    padding: 4px 10px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    border-radius: 2px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 2s infinite;
+    display: inline-block;
+    margin-right: 6px;
+  }
+
+  /* ── DEMO NOTICE ── */
+  .demo-notice {
+    background: rgba(255,176,0,0.06);
+    border-bottom: 1px solid rgba(255,176,0,0.2);
+    padding: 8px 24px;
+    color: var(--amber);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    background: var(--bg2);
+  }
+
+  .tab {
+    padding: 12px 20px;
+    cursor: pointer;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    letter-spacing: 1px;
+    font-size: 11px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .tab:hover { color: var(--green); }
+  .tab.active {
+    color: var(--green);
+    border-bottom-color: var(--green);
+    text-shadow: 0 0 8px var(--green);
+  }
+
+  /* ── MAIN CONTENT ── */
+  .content { padding: 20px 24px; max-width: 1100px; margin: 0 auto; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: slide-in 0.3s ease; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 1px;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+    background: var(--border);
+  }
+
+  .stat {
+    background: var(--bg2);
+    padding: 12px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .stat-label { color: var(--text-dim); font-size: 10px; letter-spacing: 1px; margin-top: 2px; }
+  .stat.total .stat-val { color: var(--green); text-shadow: 0 0 10px var(--green); }
+  .stat.found .stat-val { color: #aaaaaa; }
+  .stat.applied .stat-val { color: var(--green); }
+  .stat.interview .stat-val { color: var(--blue); }
+  .stat.rejected .stat-val { color: var(--red); }
+  .stat.offer .stat-val { color: var(--amber); text-shadow: 0 0 10px var(--amber); }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-btn {
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--green-faint);
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .search-box {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 5px 12px;
+    outline: none;
+    width: 220px;
+    transition: border-color 0.2s;
+  }
+
+  .search-box::placeholder { color: var(--text-dim); }
+  .search-box:focus { border-color: var(--green); box-shadow: 0 0 8px rgba(0,255,65,0.15); }
+
+  /* ── JOB CARDS ── */
+  .jobs-list { display: flex; flex-direction: column; gap: 2px; }
+
+  .job-card {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    transition: border-color 0.15s;
+    animation: slide-in 0.3s ease both;
+  }
+
+  .job-card:hover { border-color: rgba(0,255,65,0.4); }
+  .job-card.expanded { border-color: var(--green); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .score-badge {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    min-width: 36px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .score-badge.high { color: var(--green); text-shadow: 0 0 8px var(--green); }
+  .score-badge.mid { color: var(--amber); }
+  .score-badge.low { color: var(--red); }
+
+  .card-title-block { flex: 1; min-width: 0; }
+
+  .card-title {
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-meta {
+    color: var(--text-dim);
+    font-size: 11px;
+    margin-top: 2px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .card-meta span::before { content: '> '; opacity: 0.4; }
+
+  .status-badge {
+    padding: 2px 10px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+
+  .status-badge.found { background: rgba(170,170,170,0.12); color: #aaa; border: 1px solid rgba(170,170,170,0.3); }
+  .status-badge.applied { background: rgba(0,255,65,0.1); color: var(--green); border: 1px solid rgba(0,255,65,0.3); }
+  .status-badge.interview { background: rgba(68,136,255,0.12); color: var(--blue); border: 1px solid rgba(68,136,255,0.3); }
+  .status-badge.rejected { background: rgba(255,51,51,0.1); color: var(--red); border: 1px solid rgba(255,51,51,0.3); }
+  .status-badge.offer { background: rgba(255,176,0,0.12); color: var(--amber); border: 1px solid rgba(255,176,0,0.3); }
+
+  .expand-arrow {
+    color: var(--text-dim);
+    font-size: 10px;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+
+  .job-card.expanded .expand-arrow { transform: rotate(90deg); }
+
+  .card-body {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border);
+    margin-top: 0;
+  }
+
+  .job-card.expanded .card-body { display: block; }
+
+  .rationale {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: var(--green-faint);
+    border-left: 2px solid var(--green);
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .rationale strong { color: var(--green); }
+
+  .card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 5px 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.15s;
+  }
+
+  .action-btn:hover {
+    border-color: var(--green);
+    color: var(--green);
+    background: var(--green-faint);
+  }
+
+  .action-btn.primary {
+    border-color: rgba(0,255,65,0.5);
+    color: var(--green);
+  }
+
+  .status-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 5px 8px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .demo-action-note {
+    color: var(--text-dim);
+    font-size: 10px;
+    margin-left: auto;
+    font-style: italic;
+  }
+
+  /* ── PIPELINE TAB ── */
+  .pipeline-overview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 700px) { .pipeline-overview { grid-template-columns: 1fr; } }
+
+  .pipeline-card {
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 20px;
+  }
+
+  .pipeline-card h3 {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+    color: var(--green);
+    text-shadow: 0 0 8px rgba(0,255,65,0.4);
+  }
+
+  .pipeline-card p, .pipeline-card li {
+    color: var(--text-dim);
+    font-size: 12px;
+    line-height: 1.7;
+    margin-bottom: 6px;
+  }
+
+  .pipeline-card li::before { content: '> '; color: var(--green); opacity: 0.6; }
+  .pipeline-card ul { list-style: none; }
+
+  .tech-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid rgba(0,255,65,0.25);
+    color: var(--green);
+    font-size: 10px;
+    margin: 3px 3px 0 0;
+    background: var(--green-faint);
+  }
+
+  .flow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    margin-bottom: 16px;
+  }
+
+  .flow-step {
+    display: flex;
+    gap: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+    transition: background 0.15s;
+  }
+
+  .flow-step:last-child { border-bottom: none; }
+  .flow-step:hover { background: var(--green-faint); }
+
+  .step-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--green);
+    opacity: 0.4;
+    min-width: 32px;
+    text-shadow: 0 0 8px var(--green);
+  }
+
+  .step-content h4 {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    color: var(--green);
+  }
+
+  .step-content p { color: var(--text-dim); font-size: 12px; line-height: 1.6; }
+
+  .step-content .step-detail {
+    margin-top: 6px;
+    font-size: 11px;
+    color: rgba(0,255,65,0.35);
+  }
+
+  .github-link-block {
+    border: 1px solid rgba(0,255,65,0.3);
+    background: var(--green-faint);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .github-link-block p { color: var(--text-dim); font-size: 12px; }
+  .github-link-block strong { color: var(--green); }
+
+  .gh-btn {
+    padding: 8px 20px;
+    border: 1px solid var(--green);
+    background: transparent;
+    color: var(--green);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-decoration: none;
+    transition: all 0.15s;
+    display: inline-block;
+  }
+
+  .gh-btn:hover { background: var(--green); color: var(--bg); }
+
+  /* empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-dim);
+  }
+
+  .empty-state::before { content: '[ NO RESULTS ]'; display: block; font-family: 'Orbitron', monospace; font-size: 14px; margin-bottom: 8px; opacity: 0.4; }
+</style>
+</head>
+<body>
+<div class="scan-sweep"></div>
+
+<header>
+  <div class="logo">
+    JOB_AGENT<br>
+    <span>AUTONOMOUS APPLICATION PIPELINE</span>
+  </div>
+  <div class="header-right">
+    <span class="demo-badge">⚠ DEMO MODE</span>
+    <span class="clock" id="clock"></span>
+    <span><span class="status-dot"></span><span style="color:var(--text-dim);font-size:11px">SYSTEM NOMINAL</span></span>
+  </div>
+</header>
+
+<div class="demo-notice">
+  ⚠ &nbsp;This is a portfolio demo with sanitized sample data. Company names and URLs have been replaced. The scoring rationales shown are real AI-generated output from the live system.
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('applications', this)">[ APPLICATIONS ]</div>
+  <div class="tab" onclick="switchTab('pipeline', this)">[ HOW IT WORKS ]</div>
+</div>
+
+<div class="content">
+
+  <!-- ── APPLICATIONS TAB ── -->
+  <div class="tab-panel active" id="tab-applications">
+
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat total"><div class="stat-val" id="stat-total">0</div><div class="stat-label">TOTAL</div></div>
+      <div class="stat found"><div class="stat-val" id="stat-found">0</div><div class="stat-label">FOUND</div></div>
+      <div class="stat applied"><div class="stat-val" id="stat-applied">0</div><div class="stat-label">APPLIED</div></div>
+      <div class="stat interview"><div class="stat-val" id="stat-interview">0</div><div class="stat-label">INTERVIEW</div></div>
+      <div class="stat rejected"><div class="stat-val" id="stat-rejected">0</div><div class="stat-label">REJECTED</div></div>
+      <div class="stat offer"><div class="stat-val" id="stat-offer">0</div><div class="stat-label">OFFER</div></div>
+    </div>
+
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="setFilter('all', this)">ALL</button>
+      <button class="filter-btn" onclick="setFilter('found', this)">FOUND</button>
+      <button class="filter-btn" onclick="setFilter('applied', this)">APPLIED</button>
+      <button class="filter-btn" onclick="setFilter('interview', this)">INTERVIEW</button>
+      <button class="filter-btn" onclick="setFilter('rejected', this)">REJECTED</button>
+      <button class="filter-btn" onclick="setFilter('offer', this)">OFFER</button>
+      <input class="search-box" placeholder="search title / company..." oninput="renderJobs()" id="search-box">
+    </div>
+
+    <div class="jobs-list" id="jobs-list"></div>
+  </div>
+
+  <!-- ── PIPELINE TAB ── -->
+  <div class="tab-panel" id="tab-pipeline">
+
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <h4>JOB SCOUT — MULTI-SOURCE SCRAPER</h4>
+          <p>Each run fetches listings from 6+ job boards simultaneously: Indeed RSS feeds (30+ targeted searches), USAJobs federal API, Adzuna API, RemoteOK, Remotive, Jobicy, and We Work Remotely. A rotating keyword bank expands search coverage across successive runs so the same queries are never repeated back-to-back.</p>
+          <div class="step-detail">Sources: Indeed · USAJobs API · Adzuna API · RemoteOK · Remotive · Jobicy · WWR</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <h4>DEDUPLICATION + SEEN-JOBS CACHE</h4>
+          <p>URLs are deduplicated across all sources before scoring. A persistent JSON cache tracks every seen job URL with a timestamp. Jobs are skipped for 30 days after first seen, then automatically re-enter the pool — so the agent gets deeper into the job boards over time without ever re-scoring something you already reviewed.</p>
+          <div class="step-detail">Storage: seen_jobs.json · Expiry: 30 days · Format: {url: date}</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <h4>LOCATION FILTER — HAVERSINE DISTANCE</h4>
+          <p>Every listing is checked against a strict two-pass location filter. First, remote signals are detected in the title, location field, and description. Then, non-remote jobs are run through coordinate lookup against a 60+ city database using the Haversine formula. Only remote jobs or jobs within 50 miles of home pass through. Far-away states are hard-rejected before coordinate lookup runs.</p>
+          <div class="step-detail">Home: Mathias, WV · Radius: 50mi · City DB: 60+ entries · Algorithm: Haversine</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <h4>CLAUDE AI SCORING — HAIKU MODEL</h4>
+          <p>Each qualifying listing is scored 1–10 by Claude Haiku against a detailed candidate profile covering target roles, skills, pay requirements, and location preferences. The prompt is optimized to under 200 tokens using a cached system prompt, keeping per-run API costs under $0.05. Score rationale is stored with each result for human review.</p>
+          <div class="step-detail">Model: claude-haiku-4-5 · Prompt: ~200 tokens · Output: score + one-sentence rationale</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">05</div>
+        <div class="step-content">
+          <h4>DIGEST EMAIL + GOOGLE SHEETS LOGGING</h4>
+          <p>All qualifying jobs are batched into a single HTML digest email sent via Gmail API — no per-job emails, no PDF attachments. Each job entry shows score, company, location, pay range, rationale, and a direct link to the posting. Results are simultaneously logged to Google Sheets for historical tracking.</p>
+          <div class="step-detail">API: Gmail · Logging: Google Sheets API · Format: HTML digest email</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">06</div>
+        <div class="step-content">
+          <h4>FLASK DASHBOARD — STATUS TRACKING + ON-DEMAND GENERATION</h4>
+          <p>A local Flask dashboard provides full visibility into all discovered jobs. Status tracking (Found → Applied → Interview → Offer/Rejected) is persisted to JSON. On-demand resume and cover letter generation calls Claude to tailor documents to each specific job, generating PDFs only when requested — not on every pipeline run.</p>
+          <div class="step-detail">Framework: Flask · PDF: ReportLab · Status: job_status.json · Schedule: Windows Task Scheduler (hourly, 7am–6pm)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pipeline-overview">
+      <div class="pipeline-card">
+        <h3>TECH STACK</h3>
+        <ul>
+          <li>Python 3.12 — core language</li>
+          <li>Anthropic API — AI scoring + document generation</li>
+          <li>Flask — local web dashboard</li>
+          <li>Gmail API + Google Sheets API — dispatch + logging</li>
+          <li>feedparser — RSS ingestion</li>
+          <li>ReportLab — PDF generation</li>
+          <li>requests — API integrations</li>
+          <li>Windows Task Scheduler — hourly automation</li>
+        </ul>
+        <div style="margin-top:14px">
+          <span class="tech-tag">Python</span>
+          <span class="tech-tag">Anthropic API</span>
+          <span class="tech-tag">Flask</span>
+          <span class="tech-tag">Gmail API</span>
+          <span class="tech-tag">Google Sheets</span>
+          <span class="tech-tag">ReportLab</span>
+          <span class="tech-tag">REST APIs</span>
+          <span class="tech-tag">HTML/CSS/JS</span>
+        </div>
+      </div>
+      <div class="pipeline-card">
+        <h3>PROJECT HIGHLIGHTS</h3>
+        <ul>
+          <li>Runs hourly 7am–6pm via Task Scheduler</li>
+          <li>Searches 6+ job boards per run</li>
+          <li>30-day seen-job cache with auto-expiry</li>
+          <li>Rotating keyword bank across runs</li>
+          <li>Haversine distance filtering (50mi radius)</li>
+          <li>AI scoring under $0.05/run optimized</li>
+          <li>On-demand tailored resume + cover letter</li>
+          <li>Full status lifecycle tracking</li>
+          <li>Single HTML digest email per run</li>
+          <li>Built entirely as a personal job search tool</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="github-link-block">
+      <div>
+        <p><strong>Full source code available on GitHub.</strong></p>
+        <p>Sanitized for public release — API keys and personal data removed. Includes setup instructions and .env template.</p>
+      </div>
+      <a href="https://github.com/sdellin" target="_blank" class="gh-btn">[ VIEW ON GITHUB ]</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Sample data — real AI rationales, sanitized companies ──────────────────
+const JOBS = [
+  {
+    id: 1,
+    title: "Senior IT Support Specialist",
+    company: "TechCorp SaaS",
+    location: "Remote",
+    pay: "$62,000 - $75,000",
+    score: 9,
+    status: "applied",
+    rationale: "Excellent match — senior IT support role with escalation responsibilities aligns directly with candidate's Tier 2 experience, Confluence KB ownership, and cross-functional liaison work. Remote position within pay range."
+  },
+  {
+    id: 2,
+    title: "Help Desk Team Lead",
+    company: "Managed Services Co.",
+    location: "Remote",
+    pay: "$58,000 - $68,000",
+    score: 8,
+    status: "interview",
+    rationale: "Strong match — team lead position leverages candidate's mentoring and documentation experience. Requires Active Directory and ticketing system proficiency which candidate has demonstrated. Remote and within pay range."
+  },
+  {
+    id: 3,
+    title: "Technical Support Analyst II",
+    company: "EdTech Platform Inc.",
+    location: "Remote",
+    pay: "$55,000 - $65,000",
+    score: 8,
+    status: "applied",
+    rationale: "Strong match — Tier 2 support analyst role for an edtech SaaS platform mirrors candidate's current role almost exactly. Cross-platform support (web, iOS, Android) and Jira/Confluence stack are an exact skills match."
+  },
+  {
+    id: 4,
+    title: "IT Systems Administrator",
+    company: "Regional Credit Union",
+    location: "Harrisonburg, VA",
+    pay: "$60,000 - $72,000",
+    score: 7,
+    status: "found",
+    rationale: "Good match — sysadmin role within 35 miles of home. Windows Server and Active Directory requirements align with candidate's home lab experience. On-site role but within commutable range."
+  },
+  {
+    id: 5,
+    title: "Escalation Support Engineer",
+    company: "Cloud Services Ltd.",
+    location: "Remote",
+    pay: "Not listed",
+    score: 8,
+    status: "found",
+    rationale: "Strong match — escalation engineer title directly mirrors candidate's Tier 2 role. Unlisted pay not penalized per scoring rules. Requires Python scripting and API troubleshooting which candidate has demonstrated through automation projects."
+  },
+  {
+    id: 6,
+    title: "Knowledge Base Manager",
+    company: "HR Software Co.",
+    location: "Remote",
+    pay: "$57,000 - $70,000",
+    score: 7,
+    status: "rejected",
+    rationale: "Good match — knowledge management role aligns with candidate's Confluence ownership of 100+ pages. Slight concern about non-IT industry (HR software) but technical documentation skills transfer directly."
+  },
+  {
+    id: 7,
+    title: "Service Desk Analyst (Federal)",
+    company: "US Federal Agency",
+    location: "Remote (Any U.S.)",
+    pay: "$52,000 - $67,000",
+    score: 7,
+    status: "found",
+    rationale: "Good match — federal service desk role, fully remote. Pay range slightly below minimum on low end but midpoint is within range. Candidate's ITC Systems background with federal clients (Bureau of Prisons) is a relevant differentiator."
+  },
+  {
+    id: 8,
+    title: "Customer Success Engineer",
+    company: "DevOps Platform Inc.",
+    location: "Remote",
+    pay: "$70,000 - $85,000",
+    score: 6,
+    status: "found",
+    rationale: "Decent match — technical customer success role above pay range. Requires deeper DevOps knowledge than candidate currently has but Python, Docker, and Linux skills are relevant. Worth monitoring."
+  },
+  {
+    id: 9,
+    title: "IT Support Specialist",
+    company: "State Government Agency",
+    location: "Elkins, WV",
+    pay: "$45,000 - $55,000",
+    score: 5,
+    status: "found",
+    rationale: "Loose match — role is within 35 miles and skills align, but pay ceiling is at candidate's minimum. Government benefits may offset salary. Worth keeping in view if situation becomes urgent."
+  },
+  {
+    id: 10,
+    title: "Technical Support Manager",
+    company: "Cybersecurity Firm",
+    location: "Remote",
+    pay: "$75,000 - $95,000",
+    score: 8,
+    status: "offer",
+    rationale: "Strong match — support manager role at a cybersecurity firm aligns with candidate's TryHackMe training trajectory and Tier 2 leadership experience. Managing a small team mirrors candidate's current mentoring responsibilities. Above pay range."
+  }
+];
+
+let currentFilter = 'all';
+let statuses = {};
+
+// init statuses from job data
+JOBS.forEach(j => statuses[j.id] = j.status);
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderJobs();
+}
+
+function scoreClass(s) {
+  if (s >= 7) return 'high';
+  if (s >= 5) return 'mid';
+  return 'low';
+}
+
+function updateStats() {
+  const counts = { found:0, applied:0, interview:0, rejected:0, offer:0 };
+  JOBS.forEach(j => {
+    const s = statuses[j.id] || 'found';
+    if (counts[s] !== undefined) counts[s]++;
+  });
+  document.getElementById('stat-total').textContent = JOBS.length;
+  document.getElementById('stat-found').textContent = counts.found;
+  document.getElementById('stat-applied').textContent = counts.applied;
+  document.getElementById('stat-interview').textContent = counts.interview;
+  document.getElementById('stat-rejected').textContent = counts.rejected;
+  document.getElementById('stat-offer').textContent = counts.offer;
+}
+
+function renderJobs() {
+  const search = document.getElementById('search-box').value.toLowerCase();
+  const list = document.getElementById('jobs-list');
+
+  const filtered = JOBS.filter(j => {
+    const status = statuses[j.id] || 'found';
+    const matchFilter = currentFilter === 'all' || status === currentFilter;
+    const matchSearch = !search ||
+      j.title.toLowerCase().includes(search) ||
+      j.company.toLowerCase().includes(search) ||
+      j.location.toLowerCase().includes(search);
+    return matchFilter && matchSearch;
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-state"></div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map((j, idx) => {
+    const status = statuses[j.id] || 'found';
+    return `
+    <div class="job-card" id="card-${j.id}" style="animation-delay:${idx * 0.04}s">
+      <div class="card-header" onclick="toggleCard(${j.id})">
+        <div class="score-badge ${scoreClass(j.score)}">${j.score}</div>
+        <div class="card-title-block">
+          <div class="card-title">${j.title}</div>
+          <div class="card-meta">
+            <span>${j.company}</span>
+            <span>${j.location}</span>
+            <span>${j.pay}</span>
+          </div>
+        </div>
+        <div class="status-badge ${status}">${status.toUpperCase()}</div>
+        <div class="expand-arrow">▶</div>
+      </div>
+      <div class="card-body">
+        <div class="rationale">
+          <strong>AI SCORE RATIONALE:</strong> ${j.rationale}
+        </div>
+        <div class="card-actions">
+          <select class="status-select" onchange="updateStatus(${j.id}, this.value)">
+            <option value="found" ${status==='found'?'selected':''}>FOUND</option>
+            <option value="applied" ${status==='applied'?'selected':''}>APPLIED</option>
+            <option value="interview" ${status==='interview'?'selected':''}>INTERVIEW</option>
+            <option value="rejected" ${status==='rejected'?'selected':''}>REJECTED</option>
+            <option value="offer" ${status==='offer'?'selected':''}>OFFER</option>
+          </select>
+          <button class="action-btn primary" onclick="demoAction('resume', '${j.title}')">[ GENERATE RESUME ]</button>
+          <button class="action-btn" onclick="demoAction('cover', '${j.title}')">[ GENERATE COVER LETTER ]</button>
+          <span class="demo-action-note">* generation disabled in demo</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCard(id) {
+  const card = document.getElementById('card-' + id);
+  const wasExpanded = card.classList.contains('expanded');
+  document.querySelectorAll('.job-card.expanded').forEach(c => c.classList.remove('expanded'));
+  if (!wasExpanded) card.classList.add('expanded');
+}
+
+function updateStatus(id, val) {
+  statuses[id] = val;
+  updateStats();
+  renderJobs();
+  // re-expand the card that was just changed
+  setTimeout(() => {
+    const card = document.getElementById('card-' + id);
+    if (card) card.classList.add('expanded');
+  }, 10);
+}
+
+function demoAction(type, title) {
+  const label = type === 'resume' ? 'resume' : 'cover letter';
+  alert(`[ DEMO MODE ]\n\nIn the live system, clicking this would call Claude Haiku to generate a tailored ${label} for:\n"${title}"\n\nThe PDF would be saved locally and a download link would appear here.`);
+}
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}) + ' ' +
+    now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Init
+updateStats();
+renderJobs();
+</script>
+</body>
+</html>
