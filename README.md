@@ -211,3 +211,7 @@ The scoring system, location filter, and dashboard all evolved through real use 
 ## License
 
 MIT — use freely, attribution appreciated.
+
+## Mandatory secure coding policy
+
+Any changes to this public demo or future agent code must follow [SECURITY.md](SECURITY.md): OWASP Top 10:2025/ASVS/API and LLM-agent requirements, secure HTML rendering, secret hygiene, least-privilege API tokens, synthetic demo data, prompt-injection isolation, negative tests and documented scan results. The actual Python agent described above is **not present in this repository**; security review of this portfolio page does not certify that application's code.
